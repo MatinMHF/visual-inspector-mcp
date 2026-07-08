@@ -1,0 +1,4 @@
+node_modules/
+test-full.png
+test-element.png
+*.log

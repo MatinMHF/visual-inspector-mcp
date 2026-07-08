@@ -1,0 +1,47 @@
+{
+  "name": "visual-inspector-mcp",
+  "version": "1.0.0",
+  "description": "MCP server that lets Claude Code (or any MCP client) visually inspect rendered web pages via screenshots, instead of only reading source code.",
+  "type": "module",
+  "main": "index.js",
+  "bin": {
+    "visual-inspector-mcp": "./index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "scripts": {
+    "start": "node index.js",
+    "test": "node smoke-test.mjs",
+    "postinstall": "playwright install chromium"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "claude",
+    "claude-code",
+    "screenshot",
+    "playwright",
+    "browser-automation",
+    "visual-testing",
+    "ai-agent-tools"
+  ],
+  "author": "Matin Farahani",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MatinMHF/visual-inspector-mcp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MatinMHF/visual-inspector-mcp/issues"
+  },
+  "homepage": "https://github.com/MatinMHF/visual-inspector-mcp#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "playwright": "^1.48.0",
+    "zod": "^3.23.8"
+  }
+}
