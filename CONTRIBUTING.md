@@ -1,66 +1,77 @@
 # Contributing to visual-inspector-mcp
 
-Thank you for considering a contribution! This is a small, focused project — please keep pull requests equally focused.
+Thank you for your interest in contributing!
 
-## Table of Contents
+## How to contribute
 
-- [Code of Conduct](#code-of-conduct)
-- [Reporting bugs](#reporting-bugs)
-- [Suggesting features](#suggesting-features)
-- [Development workflow](#development-workflow)
-- [Commit style](#commit-style)
-- [Pull request checklist](#pull-request-checklist)
+1. **Fork** the repository and create a branch from `main`.
+2. **Make your changes** — keep each PR focused on a single concern.
+3. **Run the smoke test** before opening a PR:
+   ```bash
+   npm test
+   ```
+   The test spins up the full server as a subprocess and exercises every tool
+   over the real MCP protocol. All tools must pass.
+4. **Open a pull request** against `main` with a clear description of what
+   changed and why.
 
-## Code of Conduct
+## Adding a new tool
 
-This project follows the [Contributor Covenant Code of Conduct](./CODE_OF_CONDUCT.md). By participating you agree to abide by its terms.
+All tools live in `index.js` and follow the same pattern:
+
+```js
+server.registerTool(
+  "tool_name",
+  {
+    title: "Human-readable title",
+    description: "What the tool does and when to use it (shown to the model).",
+    inputSchema: {
+      param: z.string().describe("What this parameter does"),
+    },
+    annotations: { readOnlyHint: true, destructiveHint: false, openWorldHint: false },
+  },
+  async ({ param }) => {
+    const p = await ensurePage();
+    // ... implementation
+    return { content: [{ type: "text", text: `Result` }] };
+  }
+);
+```
+
+Tool annotations:
+- `readOnlyHint: true` — the tool doesn't modify page state
+- `destructiveHint: true` — the tool may have irreversible side-effects
+- `openWorldHint: true` — the tool makes real network/filesystem calls
+
+After adding a tool, add a corresponding test case to `smoke-test.mjs`.
+
+## Current tools
+
+| Tool | Read-only | Open world |
+|---|---|---|
+| `navigate` | No | Yes |
+| `screenshot` | Yes | No |
+| `click` | No | No |
+| `fill` | No | No |
+| `type` | No | No |
+| `press` | No | No |
+| `resize` | No | No |
+| `console_logs` | Yes | No |
+
+## Code style
+
+- ES modules (`import`/`export`), no transpilation
+- Async/await throughout
+- No external runtime dependencies beyond `@modelcontextprotocol/sdk`, `playwright`, and `zod`
+- Keep tool descriptions short but explicit about *when* to use each tool —
+  they're resent to the model on every turn, so brevity matters
 
 ## Reporting bugs
 
-Open a [GitHub Issue](https://github.com/MatinMHF/visual-inspector-mcp/issues) and include:
+Open an issue at <https://github.com/MatinMHF/visual-inspector-mcp/issues>
+with steps to reproduce, your OS, Node.js version, and MCP client.
 
-- Node.js version (`node --version`)
-- Playwright version (`npx playwright --version`)
-- Operating system
-- MCP client you are using (Claude Code, Claude Desktop, …)
-- Steps to reproduce, expected behaviour, and actual behaviour
-- Any relevant log output
+## License
 
-## Suggesting features
-
-Open an issue with the `enhancement` label. Describe the use-case clearly before any implementation detail — the simpler the API surface the better.
-
-## Development workflow
-
-```bash
-git clone https://github.com/MatinMHF/visual-inspector-mcp.git
-cd visual-inspector-mcp
-npm install          # also installs Chromium via postinstall
-node index.js        # run the server manually (exits when stdin closes)
-npm test             # end-to-end smoke test
-```
-
-The entire server lives in `index.js`. There is no build step.
-
-## Commit style
-
-Use [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-<type>(<scope>): <short summary>
-```
-
-Common types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`.
-
-Examples:
-- `feat(screenshot): add support for clip regions`
-- `fix(navigate): handle redirects with non-2xx status`
-- `docs: add Windows PowerShell registration example`
-
-## Pull request checklist
-
-- [ ] `npm test` passes locally
-- [ ] Changes are limited to a single concern
-- [ ] New behaviour is covered by the smoke test where feasible
-- [ ] Commit messages follow Conventional Commits
-- [ ] The PR description explains *why*, not just *what*
+By contributing, you agree that your contributions will be licensed under the
+[MIT License](LICENSE).

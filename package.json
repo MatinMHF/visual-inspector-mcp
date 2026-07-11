@@ -1,7 +1,7 @@
 {
   "name": "visual-inspector-mcp",
   "version": "1.1.0",
-  "description": "MCP server that lets Claude Code (or any MCP client) visually inspect rendered web pages via screenshots, instead of only reading source code.",
+  "description": "MCP server that lets Claude Code (or any MCP client) visually inspect rendered web pages via screenshots and interact with forms — instead of only reading source code.",
   "type": "module",
   "main": "index.js",
   "bin": {

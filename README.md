@@ -1,192 +1,190 @@
-**English** | [فارسی](./README.fa.md)
-
 # visual-inspector-mcp
 
-An [MCP](https://modelcontextprotocol.io) (Model Context Protocol) server that lets Claude Code — or any MCP-compatible client — **visually inspect rendered web pages** through a persistent headless Chromium browser powered by [Playwright](https://playwright.dev).
+[![npm version](https://img.shields.io/badge/version-1.1.0-blue)](package.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 
-Instead of guessing UI state from source code alone, your AI assistant can navigate to a URL, take a screenshot, click elements, resize the viewport, and read browser console logs — all over a single persistent page session.
+**English** | [فارسی](README.fa.md)
 
-## Table of Contents
+An [MCP](https://modelcontextprotocol.io) server that lets Claude Code — or any
+MCP-compatible client — **actually see and interact with** the web pages it's
+working on, instead of only reading the source. It runs a persistent headless
+Chromium browser (via [Playwright](https://playwright.dev)) and returns
+screenshots as inline images the model can view directly in the tool result.
 
-- [Why this exists](#why-this-exists)
-- [Tools](#tools)
-  - [navigate](#navigate)
-  - [screenshot](#screenshot)
-  - [click](#click)
-  - [resize](#resize)
-  - [console_logs](#console_logs)
-- [Installation](#installation)
-  - [Prerequisites](#prerequisites)
-  - [Clone and install dependencies](#clone-and-install-dependencies)
-- [Usage](#usage)
-  - [Run directly](#run-directly)
-  - [Register with Claude Code](#register-with-claude-code)
-  - [Register with Claude Desktop](#register-with-claude-desktop-or-any-mcp-compatible-client)
-  - [Example workflow](#example-workflow)
-- [Running the smoke test](#running-the-smoke-test)
-- [Security notes](#security-notes)
-- [License](#license)
+> "This icon looks wrong" → the agent screenshots the icon and looks at it,
+> instead of guessing from the CSS.
 
-## Why this exists
+## Why
 
-Most AI coding assistants only read your source files. `visual-inspector-mcp` gives your assistant a real browser window so it can:
-
-- **See** what the page actually looks like (not just what the HTML says)
-- **Interact** with the UI — open menus, navigate tabs, trigger modals — before screenshotting
-- **Debug visually** by correlating a broken layout with console errors in the same session
-- **Check responsive breakpoints** by resizing the viewport on the fly
-
-All through a single, lightweight MCP server — no Docker, no additional services.
+Coding agents are excellent at reading and writing code, but blind to what
+that code actually renders as. A misaligned icon, a color that doesn't match
+the design, a responsive layout that breaks at a certain width, a modal that
+overlaps its own close button — none of these are visible from source alone.
+This server closes that gap with a set of small, composable tools built around
+a single persistent browser session — including full form interaction, so the
+agent can fill inputs, type keystrokes, and submit forms before looking at the
+result.
 
 ## Tools
 
-| Tool | Description | Side-effects? |
-| --- | --- | --- |
-| `navigate` | Load a URL in the persistent headless page | Opens network connections |
-| `screenshot` | Capture the viewport, full page, or a CSS selector | Read-only |
-| `click` | Click an element by CSS selector or Playwright locator | Modifies page state |
-| `resize` | Resize the browser viewport | Modifies page state |
-| `console_logs` | Return recent browser console messages and page errors | Read-only |
+| Tool | Description |
+|---|---|
+| `navigate` | Load a URL (dev server, `file://`, or any public site) in a persistent page. Stays open for subsequent calls. Returns the *resolved* URL + title, so silent redirects are visible. |
+| `screenshot` | Screenshot the current page, or a single element by CSS selector / Playwright locator syntax (e.g. `text=Submit`). Supports viewport, full-page, and element-scoped capture. Defaults to lossless PNG; JPEG is an opt-in for large, photo-heavy full-page captures. |
+| `click` | Click an element to reach a UI state (open a modal, menu, tab) before screenshotting it. |
+| `fill` | Set the value of an input/textarea/select by selector (`locator.fill` — clears then types, dispatching the input/change events React controlled components need). Pass `fields` to fill several inputs in one call. |
+| `type` | Type into a field one key at a time (`locator.pressSequentially`), firing a keydown/keypress/keyup per character — for inputs whose handlers need real keystrokes and don't react to `fill`. Optional `clear` and per-keystroke `delay`. |
+| `press` | Press a keyboard key such as `Enter` (submit a form), `Tab`, or `Escape`, against a given `selector` or the focused element. Supports Playwright key syntax (e.g. `Control+A`). |
+| `resize` | Change the viewport size to check a responsive breakpoint, independent of navigating or screenshotting — so you can resize → click → screenshot without reloading the page (and losing client-side state). |
+| `console_logs` | Recent browser console messages and page errors, to correlate a visual issue with a JS error. Supports `limit` and an `error`-only filter. |
 
-Each tool is annotated with `readOnlyHint`, `destructiveHint`, and `openWorldHint` metadata so MCP clients can surface appropriate confirmation prompts.
+Full parameter reference is in the tool descriptions themselves (visible to
+any MCP client) and in [`index.js`](index.js).
 
-### `navigate`
+## Requirements
 
-Load a URL in the persistent browser page. The page stays open for later `click`, `screenshot`, or `console_logs` calls.
-
-| Param | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `url` | string | yes | URL to load (supports `http://`, `https://`, `file://`, and `data:` URIs) |
-| `waitForSelector` | string | no | Wait for this CSS/Playwright selector before returning — useful for SPAs |
-
-Returns the resolved URL and page title on one line: `https://example.com — "Example Domain"`.
-
-### `screenshot`
-
-Screenshot the current page and return it as a base64-encoded image block.
-
-| Param | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `selector` | string | no | Capture only this element (cheapest); CSS selector or Playwright locator |
-| `fullPage` | boolean | no | Capture the full scrollable page (most expensive); defaults to viewport |
-| `format` | `"png"` \| `"jpeg"` | no | `png` (default, lossless) or `jpeg` (smaller; fine for layout checks) |
-| `quality` | number 1–100 | no | JPEG quality (default 80); ignored for PNG |
-
-Requires `navigate` to have been called first.
-
-### `click`
-
-Click an element to reach a UI state (open a menu, modal, or tab) before screenshotting it.
-
-| Param | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `selector` | string | yes | CSS selector or Playwright locator of the element to click |
-
-### `resize`
-
-Resize the browser viewport to check a responsive breakpoint.
-
-| Param | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `width` | number | yes | Viewport width in pixels |
-| `height` | number | yes | Viewport height in pixels |
-
-### `console_logs`
-
-Return recent browser console messages and page errors — useful for correlating a visual glitch with a JavaScript error.
-
-| Param | Type | Required | Notes |
-| --- | --- | --- | --- |
-| `limit` | number | no | Max entries to return, most recent first (default 30) |
-| `level` | `"all"` \| `"error"` | no | `"all"` (default) or errors/warnings only |
-| `clear` | boolean | no | Clear the log buffer after reading |
-| `withTimestamps` | boolean | no | Prepend ISO timestamps to each entry (default false) |
+- [Node.js](https://nodejs.org) 18 or later
+- ~200 MB free disk space (Playwright downloads a Chromium build on install)
 
 ## Installation
-
-### Prerequisites
-
-- [Node.js](https://nodejs.org/) 18+ (for native `fetch` and ESM support)
-- A terminal / shell
-
-### Clone and install dependencies
 
 ```bash
 git clone https://github.com/MatinMHF/visual-inspector-mcp.git
 cd visual-inspector-mcp
-npm install          # also runs `playwright install chromium` via postinstall
+npm install        # installs dependencies and downloads Chromium via postinstall
 ```
 
-If Chromium is not installed automatically, run:
+## Configuration
+
+### Claude Code
 
 ```bash
-npx playwright install chromium
+claude mcp add --scope user visual-inspector -- node /absolute/path/to/visual-inspector-mcp/index.js
 ```
 
-## Usage
+`--scope user` registers it for every project. Use `--scope project` instead
+to scope it to the current repo, or omit `--scope` for the current session
+only. Restart Claude Code (or start a new session) after adding it — a
+running session won't pick up a newly registered server.
 
-### Run directly
-
-```bash
-node index.js
-```
-
-The server communicates over **stdio**, so it is meant to be launched by an MCP client, not run interactively on its own.
-
-### Register with Claude Code
-
-```bash
-claude mcp add visual-inspector -s user -- node /path/to/visual-inspector-mcp/index.js
-```
-
-On Windows PowerShell, quote the `--` separator to prevent PowerShell from silently stripping it:
+On **Windows PowerShell**, quote the `--` separator:
 
 ```powershell
-claude mcp add visual-inspector -s user "--" node "C:/path/to/visual-inspector-mcp/index.js"
+claude mcp add --scope user visual-inspector "--" node "C:/path/to/visual-inspector-mcp/index.js"
 ```
 
-### Register with Claude Desktop (or any MCP-compatible client)
+Verify it's connected:
 
-Add an entry to your client's MCP server config (e.g. `claude_desktop_config.json`):
+```bash
+claude mcp list
+```
+
+### Claude Desktop (or any client using `claude_desktop_config.json`)
+
+Add to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
     "visual-inspector": {
       "command": "node",
-      "args": ["C:/path/to/visual-inspector-mcp/index.js"]
+      "args": ["/absolute/path/to/visual-inspector-mcp/index.js"]
     }
   }
 }
 ```
 
-### Example workflow
+### Other MCP clients
 
-A typical session once the server is registered with your MCP client:
+This is a standard stdio MCP server — `node index.js` speaks MCP over
+stdin/stdout. Any client that supports stdio-transport MCP servers can run it
+the same way.
 
-1. **"Navigate to my dev server"** → calls `navigate` with `http://localhost:3000`
-2. **"Take a screenshot"** → calls `screenshot` to see the current rendered UI
-3. **"Click the hamburger menu"** → calls `click` with the selector, then `screenshot` again
-4. **"Check it at mobile width"** → calls `resize` with `{ width: 375, height: 667 }`, then `screenshot`
-5. **"Any JS errors?"** → calls `console_logs` with `{ level: "error" }`
+## Usage
 
-## Running the smoke test
+Once configured, just ask naturally:
 
-A self-contained end-to-end smoke test spins up the server as a subprocess, speaks MCP over stdio, and exercises all five tools:
+> "Navigate to localhost:3000/settings and screenshot the save icon in the
+> toolbar — does it look right?"
 
-```bash
-npm test
+> "Resize to 375x667 and check what the mobile nav looks like after I click
+> the hamburger menu."
+
+> "Fill in the signup form with test data and submit it — any errors?"
+
+> "Any console errors on the checkout page?"
+
+Typical tool sequences:
+
+```js
+// Visual inspection
+navigate({ url: "http://localhost:3000/settings" })
+screenshot({ selector: "#save-icon" })   // isolate just the element
+console_logs({ level: "error" })         // check for related JS errors
+
+// Form interaction
+navigate({ url: "http://localhost:3000/signup" })
+fill({ fields: [{ selector: "#name", value: "Ada" }, { selector: "#email", value: "ada@example.com" }] })
+press({ key: "Enter", selector: "[type=submit]" })
+screenshot({})                           // see the result
+
+// Responsive check
+resize({ width: 375, height: 667 })
+screenshot({ fullPage: true })
 ```
 
-The test writes `test-full.png` and `test-element.png` to the working directory as proof that screenshots are working. Both files can be deleted afterwards.
+## Design notes
 
-## Security notes
+- **One persistent page per server process.** `navigate` doesn't spin up a
+  new browser each call — it reuses the same page/context so state (login,
+  scroll position, SPA client state) survives across `click` → `fill` →
+  `screenshot` sequences.
+- **`fill` vs `type`.** `fill` is almost always the right choice — it clears
+  the field, sets the value atomically, and fires the input/change events
+  React's controlled components need. Use `type` only when the input's handler
+  specifically reacts to individual keystrokes (e.g. an autocomplete that
+  fires on `keydown`).
+- **Cheapest-capture-first.** `screenshot`'s tool description actively steers
+  the calling model toward `selector` (one element) over the default
+  viewport, and viewport over `fullPage` (most expensive in image tokens).
+- **Lossless by default.** Screenshots are PNG unless you explicitly opt into
+  `format: "jpeg"`. On flat-color UI (icons, buttons), JPEG is often no
+  smaller — so PNG stays the default; on photo-heavy full-page captures,
+  JPEG at quality 80 measured ~75–80% smaller in testing.
+- **Bounded log output.** `console_logs` defaults to the last 30 entries with
+  no timestamps — pass `limit`/`withTimestamps` for more.
 
-- The server launches a **headless** Chromium instance; it has access to your local network and filesystem via `file://` URLs.
-- Only register it with MCP clients and sessions you trust.
-- `click` is marked `destructiveHint: true` — well-behaved clients should confirm before invoking it on production pages.
-- Because every tool has `openWorldHint: true` (real network calls), avoid pointing it at sensitive internal services without understanding the risk.
+## Security note
+
+This server gives the connected AI client the ability to navigate a real
+(headless) browser to any URL it's given — including `localhost` and other
+addresses on your local network. It's designed to run locally over stdio for
+trusted development use, the same way you'd trust any other local dev
+tooling. Don't expose it over a network transport or hand it to an untrusted
+client.
+
+## Development
+
+```bash
+npm test        # runs smoke-test.mjs: spins up the server as a subprocess and
+                # exercises every tool + parameter over the real MCP protocol
+```
+
+`smoke-test.mjs` is also run in CI on every push/PR (see
+`.github/workflows/test.yml`).
+
+## Changelog
+
+### v1.1.0
+- Added `fill` tool — set input/textarea/select values (supports batch `fields[]`)
+- Added `type` tool — per-keystroke typing for inputs needing real keydown events
+- Added `press` tool — send keyboard keys (`Enter`, `Tab`, `Escape`, `Control+A`, …)
+- Extended smoke test with full form interaction coverage
+
+### v1.0.0
+- Initial release: `navigate`, `screenshot`, `click`, `resize`, `console_logs`
 
 ## License
 
-MIT — see [LICENSE](./LICENSE) for details.
+[MIT](LICENSE)
