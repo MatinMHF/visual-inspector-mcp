@@ -1,6 +1,6 @@
 {
   "name": "visual-inspector-mcp",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "MCP server that lets Claude Code (or any MCP client) visually inspect rendered web pages via screenshots, instead of only reading source code.",
   "type": "module",
   "main": "index.js",
@@ -24,6 +24,7 @@
     "playwright",
     "browser-automation",
     "visual-testing",
+    "form-filling",
     "ai-agent-tools"
   ],
   "author": "Matin Farahani",

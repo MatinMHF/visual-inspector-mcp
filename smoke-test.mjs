@@ -23,6 +23,11 @@ const html = `data:text/html,${encodeURIComponent(`
   <html><body style="margin:0;padding:40px;font-family:sans-serif;background:#fff">
     <h1>Test Page</h1>
     <button id="save-icon" style="width:64px;height:64px;background:crimson;border-radius:12px;border:none;color:white;font-size:12px">SAVE</button>
+    <form onsubmit="window.__submitted=true;return false">
+      <input id="name" type="text" />
+      <input id="code" type="text" />
+      <button id="submit" type="submit">Go</button>
+    </form>
   </body></html>
 `)}`;
 
@@ -85,6 +90,48 @@ if (!navResult.content[0].text.includes(" — ")) {
   throw new Error("Expected compact 'url — \"title\"' navigate response format");
 }
 console.log("navigate response format OK");
+
+// --- Form interaction: fill / type / press ---
+
+// fill: single field
+const fillOne = await client.callTool({
+  name: "fill",
+  arguments: { selector: "#name", value: "Ada" },
+});
+if (!/Filled 1 field/.test(fillOne.content[0].text)) {
+  throw new Error(`Unexpected fill response: ${fillOne.content[0].text}`);
+}
+console.log("fill(single) ->", fillOne.content[0].text);
+
+// fill: multiple fields in one call
+const fillMany = await client.callTool({
+  name: "fill",
+  arguments: { fields: [{ selector: "#name", value: "Grace" }, { selector: "#code", value: "42" }] },
+});
+if (!/Filled 2 field/.test(fillMany.content[0].text)) {
+  throw new Error(`Unexpected multi-fill response: ${fillMany.content[0].text}`);
+}
+console.log("fill(multi) ->", fillMany.content[0].text);
+
+// type: per-keystroke with clear
+const typeResult = await client.callTool({
+  name: "type",
+  arguments: { selector: "#code", text: "abc", clear: true, delay: 0 },
+});
+if (!/Typed into #code/.test(typeResult.content[0].text)) {
+  throw new Error(`Unexpected type response: ${typeResult.content[0].text}`);
+}
+console.log("type ->", typeResult.content[0].text);
+
+// press: submit the form via Enter on the submit button
+const pressResult = await client.callTool({
+  name: "press",
+  arguments: { key: "Enter", selector: "#submit" },
+});
+if (!/Pressed: Enter/.test(pressResult.content[0].text)) {
+  throw new Error(`Unexpected press response: ${pressResult.content[0].text}`);
+}
+console.log("press ->", pressResult.content[0].text);
 
 await client.close();
 console.log("SMOKE TEST PASSED");

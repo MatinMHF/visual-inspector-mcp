@@ -126,6 +126,87 @@ server.registerTool(
 );
 
 server.registerTool(
+  "fill",
+  {
+    title: "Fill form field",
+    description:
+      "Set the value of an input/textarea/select by selector (Playwright locator.fill — clears then types, and dispatches the input/change " +
+      "events React controlled components need). Pass `fields` to fill several inputs in one call. Use `type` instead only for inputs that " +
+      "require per-keystroke keydown events.",
+    inputSchema: {
+      selector: z.string().optional().describe("CSS selector or Playwright locator of a single field to fill"),
+      value: z.string().optional().describe("Value to set for `selector`"),
+      fields: z
+        .array(z.object({ selector: z.string(), value: z.string() }))
+        .optional()
+        .describe("Fill multiple fields in order, e.g. [{selector, value}, ...]"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  },
+  async ({ selector, value, fields }) => {
+    const p = await ensurePage();
+    const toFill = fields && fields.length ? fields : [];
+    if (selector != null) toFill.push({ selector, value: value ?? "" });
+    if (!toFill.length) throw new Error("Provide `selector`+`value` or a non-empty `fields` array.");
+    for (const f of toFill) {
+      const loc = p.locator(f.selector).first();
+      await loc.waitFor({ state: "visible", timeout: 10000 });
+      await loc.fill(f.value);
+    }
+    return { content: [{ type: "text", text: `Filled ${toFill.length} field(s): ${toFill.map((f) => f.selector).join(", ")}` }] };
+  }
+);
+
+server.registerTool(
+  "type",
+  {
+    title: "Type text (per-keystroke)",
+    description:
+      "Type into a field one key at a time (Playwright locator.pressSequentially), firing a keydown/keypress/keyup per character — for " +
+      "inputs whose handlers need real keystrokes and don't react to `fill`. Set `clear` to empty the field first.",
+    inputSchema: {
+      selector: z.string().describe("CSS selector or Playwright locator of the field"),
+      text: z.string().describe("Text to type"),
+      clear: z.boolean().optional().describe("Clear the field before typing (default false)"),
+      delay: z.number().optional().describe("Delay in ms between keystrokes (default 20)"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  },
+  async ({ selector, text, clear, delay }) => {
+    const p = await ensurePage();
+    const loc = p.locator(selector).first();
+    await loc.waitFor({ state: "visible", timeout: 10000 });
+    if (clear) await loc.fill("");
+    await loc.pressSequentially(text, { delay: delay ?? 20 });
+    return { content: [{ type: "text", text: `Typed into ${selector}` }] };
+  }
+);
+
+server.registerTool(
+  "press",
+  {
+    title: "Press key",
+    description:
+      "Press a keyboard key such as 'Enter' (submit a form), 'Tab', or 'Escape'. With `selector` the key is sent to that element; without " +
+      "it, to the focused element. Supports Playwright key syntax (e.g. 'Control+A').",
+    inputSchema: {
+      key: z.string().describe("Key to press, e.g. 'Enter', 'Tab', 'Escape', 'Control+A'"),
+      selector: z.string().optional().describe("Element to focus + press against; omit to press the focused element"),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
+  },
+  async ({ key, selector }) => {
+    const p = await ensurePage();
+    if (selector) {
+      await p.locator(selector).first().press(key, { timeout: 10000 });
+    } else {
+      await p.keyboard.press(key);
+    }
+    return { content: [{ type: "text", text: `Pressed: ${key}${selector ? ` on ${selector}` : ""}` }] };
+  }
+);
+
+server.registerTool(
   "resize",
   {
     title: "Resize viewport",
