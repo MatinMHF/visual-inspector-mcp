@@ -1,34 +1,40 @@
 ---
 name: Bug report
-about: Create a report to help us improve
-title: '[Bug] '
+about: Report something that isn't working as expected
+title: "[Bug]: "
 labels: bug
 assignees: ''
 ---
 
-**Describe the bug**
-A clear and concise description of what the bug is.
+## Describe the bug
 
-**To Reproduce**
-Steps to reproduce the behavior:
-1. Register the server with '...'
-2. Call tool '...'
-3. See error
+A clear, concise description of what's wrong.
 
-**Expected behavior**
-A clear and concise description of what you expected to happen.
+> **Do not report security vulnerabilities here.** See
+> [SECURITY.md](../../SECURITY.md) for private reporting.
 
-**Environment**
-- Node.js version: [e.g. 20.11.0]
-- Playwright version: [e.g. 1.48.0]
-- OS: [e.g. Windows 11, macOS 14, Ubuntu 22.04]
-- MCP client: [e.g. Claude Code, Claude Desktop]
-- visual-inspector-mcp version / commit: [e.g. v1.0.0]
+## To reproduce
 
-**Log output / error message**
-```
-paste any relevant output here
-```
+1. Tool called: `...` (e.g. `navigate`, `screenshot`, `click`)
+2. Input given: `...`
+3. Page or URL involved: `...`
+4. Expected result: `...`
+5. Actual result / error message: `...`
 
-**Additional context**
-Add any other context about the problem here.
+## Environment
+
+- OS: `...`
+- Node.js version (`node -v`): `...`
+- MCP client (Claude Code, Claude Desktop, other): `...`
+- Chromium/Playwright version, if you know it: `...`
+- `visual-inspector-mcp` version / commit: `...`
+
+## Screenshot
+
+<!-- If the problem is visual (wrong viewport, blank page, clipped
+     rendering), attach what the tool returned. -->
+
+## Additional context
+
+Anything else that might help — console output, whether the page needs
+authentication, whether it's reproducible every time or intermittent.

@@ -1,19 +1,26 @@
 ---
 name: Feature request
-about: Suggest an idea for this project
-title: '[Feature] '
+about: Suggest an idea or new tool for this project
+title: "[Feature]: "
 labels: enhancement
 assignees: ''
 ---
 
-**Is your feature request related to a problem? Please describe.**
-A clear and concise description of what the problem is. E.g. "I always have to manually ... when I want to ..."
+## What problem does this solve?
 
-**Describe the solution you'd like**
-A clear and concise description of what you want to happen.
+Describe the use case this feature would unblock. This project stays
+intentionally minimal, so a concrete need helps evaluate whether it fits.
 
-**Describe alternatives you've considered**
-A clear and concise description of any alternative solutions or features you've considered.
+## Proposed solution
 
-**Additional context**
-Add any other context or screenshots about the feature request here.
+Describe what you'd like to happen — e.g. a new tool, a new parameter on an
+existing tool, a behavior change.
+
+## Alternatives considered
+
+Any workarounds you're using today, or other approaches you considered.
+
+## Additional context
+
+Anything else relevant — links, examples from other browser-automation MCP
+servers, etc.
